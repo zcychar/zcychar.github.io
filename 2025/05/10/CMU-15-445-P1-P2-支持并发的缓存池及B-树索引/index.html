@@ -19,24 +19,30 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"zcychar.top","root":"/","images":"/images","scheme":"Pisces","darkmode":false,"version":"8.23.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"copycode":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"},"path":"/search.json","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
 
-    <meta name="description" content="Road to be the GuitarHero">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Blog">
-<meta property="og:url" content="http://zcychar.top/archives/index.html">
+    <meta name="description" content="写掉了CMU 15-445 (2024fall) 课程的Project #1#2，记录一些学到的东西以及还未实现的优化。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CMU 15-445 P1&amp;P2 支持并发的缓存池及B+树索引">
+<meta property="og:url" content="http://zcychar.top/2025/05/10/CMU-15-445-P1-P2-%E6%94%AF%E6%8C%81%E5%B9%B6%E5%8F%91%E7%9A%84%E7%BC%93%E5%AD%98%E6%B1%A0%E5%8F%8AB-%E6%A0%91%E7%B4%A2%E5%BC%95/index.html">
 <meta property="og:site_name" content="Blog">
-<meta property="og:description" content="Road to be the GuitarHero">
+<meta property="og:description" content="写掉了CMU 15-445 (2024fall) 课程的Project #1#2，记录一些学到的东西以及还未实现的优化。">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://zcychar.top/images/2025-05-10%20184323.png">
+<meta property="article:published_time" content="2025-05-10T10:11:31.000Z">
+<meta property="article:modified_time" content="2025-05-10T11:18:05.566Z">
 <meta property="article:author" content="Chengyu Zhang">
+<meta property="article:tag" content="Study">
+<meta property="article:tag" content="C++">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://zcychar.top/images/2025-05-10%20184323.png">
 
 
-<link rel="canonical" href="http://zcychar.top/archives/">
+<link rel="canonical" href="http://zcychar.top/2025/05/10/CMU-15-445-P1-P2-%E6%94%AF%E6%8C%81%E5%B9%B6%E5%8F%91%E7%9A%84%E7%BC%93%E5%AD%98%E6%B1%A0%E5%8F%8AB-%E6%A0%91%E7%B4%A2%E5%BC%95/">
 
 
-<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":false,"lang":"en","comments":"","permalink":"","path":"archives/index.html","title":""}</script>
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"http://zcychar.top/2025/05/10/CMU-15-445-P1-P2-%E6%94%AF%E6%8C%81%E5%B9%B6%E5%8F%91%E7%9A%84%E7%BC%93%E5%AD%98%E6%B1%A0%E5%8F%8AB-%E6%A0%91%E7%B4%A2%E5%BC%95/","path":"2025/05/10/CMU-15-445-P1-P2-支持并发的缓存池及B-树索引/","title":"CMU 15-445 P1&P2 支持并发的缓存池及B+树索引"}</script>
 
 <script class="next-config" data-name="calendar" type="application/json">""</script>
-<title>Archive | Blog</title>
+<title>CMU 15-445 P1&P2 支持并发的缓存池及B+树索引 | Blog</title>
   
 
 
@@ -88,7 +94,7 @@
 
     <a href="/" class="brand" rel="start">
       <i class="logo-line"></i>
-      <h1 class="site-title">Blog</h1>
+      <p class="site-title">Blog</p>
       <i class="logo-line"></i>
     </a>
       <p class="site-subtitle" itemprop="description">zcychar's personal blog</p>
@@ -142,7 +148,7 @@
   
   <aside class="sidebar">
 
-    <div class="sidebar-inner sidebar-overview-active">
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
       <ul class="sidebar-nav">
         <li class="sidebar-nav-toc">
           Table of Contents
@@ -155,6 +161,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#P1-%E7%BC%93%E5%AD%98%E6%B1%A0"><span class="nav-number">1.</span> <span class="nav-text">P1 缓存池</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9B%BF%E6%8D%A2%E7%AD%96%E7%95%A5"><span class="nav-number">1.1.</span> <span class="nav-text">替换策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%93%E5%AD%98%E6%B1%A0%E4%BC%98%E5%8C%96"><span class="nav-number">1.2.</span> <span class="nav-text">缓存池优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6"><span class="nav-number">1.3.</span> <span class="nav-text">并发控制</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -202,49 +209,114 @@
 
     </div>
 
-    <div class="main-inner archive posts-collapse">
+    <div class="main-inner post posts-expand">
 
 
   
-  
-  
-  <div class="post-block">
-    <div class="post-content">
-      <div class="collection-title">
-        <span class="collection-header">Um..! 1 post. Keep on posting.</span>
-      </div>
 
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://zcychar.top/2025/05/10/CMU-15-445-P1-P2-%E6%94%AF%E6%8C%81%E5%B9%B6%E5%8F%91%E7%9A%84%E7%BC%93%E5%AD%98%E6%B1%A0%E5%8F%8AB-%E6%A0%91%E7%B4%A2%E5%BC%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Chengyu Zhang">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Blog">
+      <meta itemprop="description" content="Road to be the GuitarHero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="CMU 15-445 P1&P2 支持并发的缓存池及B+树索引 | Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          CMU 15-445 P1&P2 支持并发的缓存池及B+树索引
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
       
-    <div class="collection-year">
-      <span class="collection-header">2025<span class="collection-year-count">1</span></span>
+
+      <time title="Created: 2025-05-10 18:11:31 / Modified: 19:18:05" itemprop="dateCreated datePublished" datetime="2025-05-10T18:11:31+08:00">2025-05-10</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/ACM-Class/" itemprop="url" rel="index"><span itemprop="name">ACM-Class</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>写掉了CMU 15-445 (2024fall) 课程的Project #1#2，记录一些学到的东西以及还未实现的优化。</p>
+<span id="more"></span>
+
+<h2 id="P1-缓存池"><a href="#P1-缓存池" class="headerlink" title="P1 缓存池"></a>P1 缓存池</h2><p>缓存池存在于内存中，用于缓存并管理磁盘中数据库文件的一部分页</p>
+<p>缓存池的主要作用：</p>
+<ul>
+<li>将常用的页存储在缓存中，减少访问时产生的磁盘I&#x2F;O次数</li>
+<li>同样地，缓存池也可缓存用户的更新，我们在对数据库中的数据修改时并不直接对磁盘文件进行操作，而是先缓存在内存中，等到需要写回时再写回</li>
+</ul>
+<p><img src="/../images/2025-05-10%20184323.png"></p>
+<p>缓存池由连续的<code>frame</code>构成，每个<code>frame</code> 存放一个页的数据以及一些元信息。</p>
+<h3 id="替换策略"><a href="#替换策略" class="headerlink" title="替换策略"></a>替换策略</h3><p>对于一个缓存池，它的优秀程度很大一部分程度上由其替换策略决定。常见的缓存策略有<code>LIFO</code>,<code>FIFO</code>,<code>LRU</code>,<code>LRU-K</code>。本次实现的缓存池使用了<code>lru-k</code> 策略，即优先驱逐最近第k次访问时间最久的页，其优势在于能较好地避免偶发性的数据被缓存（类似连续扫描访问），从而提高缓存命中率。</p>
+<p>对于缓存池的替换策略的优化，lecture中还提到了如下几种：</p>
+<ul>
+<li>priority-hint 在访问的同时给出重要性指标，重要性越高的数据越靠后清除</li>
+<li>脏页处理 对于进入缓存池后没有被修改过的页，我们不需要写回磁盘直接驱逐。我们也可以进行异步写回处理，周期性的集中写回缓存池中所有脏页。但是需要注意这种操作会引起断电时数据错误。</li>
+</ul>
+<h3 id="缓存池优化"><a href="#缓存池优化" class="headerlink" title="缓存池优化"></a>缓存池优化</h3><ul>
+<li>对于数据库中常见的一类操作连续扫描，我们可以在访问的同时给出操作特征。对于周期扫描访问到的页，可以让其不进入缓存池直接写回，或是进行优先写回标记</li>
+<li>我们可以同时使用多个缓存池，来保存不同类型的数据，如索引页，元数据，一般数据。不同类型的数据访问频率差异很大，可以分配不同的缓存池大小，使用不同的替换策列。同时多缓存池也可提高并发效率（减少等待bpm锁的时间）。</li>
+<li>操作系统在进行磁盘I&#x2F;O的时候也会开一个缓存空间，但是其效率往往很差。因此我们在操作系统提供的读写api中加入<code>O-DIRECT</code> 参数来直接I&#x2F;O</li>
+</ul>
+<h3 id="并发控制"><a href="#并发控制" class="headerlink" title="并发控制"></a>并发控制</h3><p>在缓存池运行的过程中，参与的数据可分为两类，缓存池拥有的和页拥有的。因此在并发控制时，我们对<code>bpm</code>和<code>frame</code>分别设计一把锁。Project 1 的一个难点就是处理这两种锁的交互关系。</p>
+
     </div>
 
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-      <div class="post-meta-container">
-        <time itemprop="dateCreated"
-              datetime="2025-05-10T18:11:31+08:00"
-              content="2025-05-10">
-          05-10
-        </time>
-      </div>
+    
+    
+    
 
-      <div class="post-title">
-          <a class="post-title-link" href="/2025/05/10/CMU-15-445-P1-P2-%E6%94%AF%E6%8C%81%E5%B9%B6%E5%8F%91%E7%9A%84%E7%BC%93%E5%AD%98%E6%B1%A0%E5%8F%8AB-%E6%A0%91%E7%B4%A2%E5%BC%95/" itemprop="url">
-            <span itemprop="name">CMU 15-445 P1&P2 支持并发的缓存池及B+树索引</span>
-          </a>
-      </div>
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Study/" rel="tag"># Study</a>
+              <a href="/tags/C/" rel="tag"># C++</a>
+          </div>
 
-      
-    </header>
+        
+
+    </footer>
   </article>
+</div>
 
 
-    </div>
-  </div>
-  
-  
-  
+
+
+
 
 </div>
   </main>
