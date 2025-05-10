@@ -27,8 +27,9 @@
 <meta property="og:description" content="写掉了CMU 15-445 (2024fall) 课程的Project #1#2，记录一些学到的东西以及还未实现的优化。">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="http://zcychar.top/images/2025-05-10%20184323.png">
+<meta property="og:image" content="http://zcychar.top/images/2025-05-10%201.png">
 <meta property="article:published_time" content="2025-05-10T10:11:31.000Z">
-<meta property="article:modified_time" content="2025-05-10T11:18:05.566Z">
+<meta property="article:modified_time" content="2025-05-10T13:17:47.865Z">
 <meta property="article:author" content="Chengyu Zhang">
 <meta property="article:tag" content="Study">
 <meta property="article:tag" content="C++">
@@ -161,7 +162,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#P1-%E7%BC%93%E5%AD%98%E6%B1%A0"><span class="nav-number">1.</span> <span class="nav-text">P1 缓存池</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9B%BF%E6%8D%A2%E7%AD%96%E7%95%A5"><span class="nav-number">1.1.</span> <span class="nav-text">替换策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%93%E5%AD%98%E6%B1%A0%E4%BC%98%E5%8C%96"><span class="nav-number">1.2.</span> <span class="nav-text">缓存池优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6"><span class="nav-number">1.3.</span> <span class="nav-text">并发控制</span></a></li></ol></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#P1-%E7%BC%93%E5%AD%98%E6%B1%A0"><span class="nav-number">1.</span> <span class="nav-text">P1 缓存池</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9B%BF%E6%8D%A2%E7%AD%96%E7%95%A5"><span class="nav-number">1.1.</span> <span class="nav-text">替换策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%93%E5%AD%98%E6%B1%A0%E4%BC%98%E5%8C%96"><span class="nav-number">1.2.</span> <span class="nav-text">缓存池优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6"><span class="nav-number">1.3.</span> <span class="nav-text">并发控制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#P2-B-%E6%A0%91"><span class="nav-number">2.</span> <span class="nav-text">P2 B+树</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#RAII"><span class="nav-number">2.1.</span> <span class="nav-text">RAII</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96"><span class="nav-number">2.2.</span> <span class="nav-text">优化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">3.</span> <span class="nav-text">总结</span></a></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -250,7 +251,7 @@
       <span class="post-meta-item-text">Posted on</span>
       
 
-      <time title="Created: 2025-05-10 18:11:31 / Modified: 19:18:05" itemprop="dateCreated datePublished" datetime="2025-05-10T18:11:31+08:00">2025-05-10</time>
+      <time title="Created: 2025-05-10 18:11:31 / Modified: 21:17:47" itemprop="dateCreated datePublished" datetime="2025-05-10T18:11:31+08:00">2025-05-10</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -294,6 +295,33 @@
 <li>操作系统在进行磁盘I&#x2F;O的时候也会开一个缓存空间，但是其效率往往很差。因此我们在操作系统提供的读写api中加入<code>O-DIRECT</code> 参数来直接I&#x2F;O</li>
 </ul>
 <h3 id="并发控制"><a href="#并发控制" class="headerlink" title="并发控制"></a>并发控制</h3><p>在缓存池运行的过程中，参与的数据可分为两类，缓存池拥有的和页拥有的。因此在并发控制时，我们对<code>bpm</code>和<code>frame</code>分别设计一把锁。Project 1 的一个难点就是处理这两种锁的交互关系。</p>
+<p>在请求访问一个页以及结束访问时，我们的操作过程是:</p>
+<p>在bpm中查询修改，标记页被占用-&gt;获取frame的数据所有权-&gt;释放frame的数据所有权-&gt;在bpm中查询修改，标记页结束占用</p>
+<p>由此可见在这个过程中我们会持续持有frame的锁一段时间，而bpm的锁只需要在请求和释放时锁住即可。这里有一个很容易引发死锁的点，是我们必须先结束修改bpm(并释放锁)，再获取frame的数据所有权(锁)，在释放时，也应按照完全对称的方式进行。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">考虑此情况                线程T0                           线程T1</span><br><span class="line">                T0请求P0(获取并持有frame锁)                  |</span><br><span class="line">                           |             T1请求P1(获得了bpm锁,获取frame锁时阻塞)</span><br><span class="line">                 T1请求P1(获取bpm锁时阻塞)                   |</span><br><span class="line">                                      =死锁！</span><br></pre></td></tr></table></figure>
+<p>思考为何这种模式引发死锁：在设计时，我们并没有要求“只有bpm的所有者可以拥有frame的读写权”，实际上，我们只需要保证frame在bpm中的信息始终是正确的即可。这只需要我们在获取frame所有权之前修改好bpm，释放bpm锁后其他进程可以插队请求其他的frame读写权，但是由于bpm中当前frame的信息已经被更新为占用，不会产生冲突。</p>
+<h2 id="P2-B-树"><a href="#P2-B-树" class="headerlink" title="P2 B+树"></a>P2 B+树</h2><p>B+树是一种M-way的平衡树。它的一个特点是所有数据都存储在叶子节点中，内部节点只存放标识键和指针。B+树相当适合作为数据库索引。它的优势有</p>
+<ul>
+<li>增删查的时间复杂度都为 O ( log n ),相比于块状链表等单层索引优秀很多</li>
+<li>支持高效范围查找（相比于哈希表，其他平衡树）</li>
+<li>数据存放集中，可以通过设计使得每个节点的大小都为刚好一个页存储量，对磁盘I&#x2F;O友好</li>
+<li>…</li>
+</ul>
+<p>通过合理设计索引，B+树可以支持联合索引，查询满足若干个关键词的数据 （在TicketSystem的文件存储测试部分实际上已经用到了）</p>
+<h3 id="RAII"><a href="#RAII" class="headerlink" title="RAII"></a>RAII</h3><p>2024fall 版本的bustub 采用了使用 RAII（Resource Acquisition Is Initialization）思想设计的 <code>PageGuard</code> 类。写的过程中发现它相当好用，几乎完全避免了在B+树层面考虑并发控制。 之前只是知道用 RAII 设计封装好的一些类，如智能指针。这次学到了如何用一个   RAII 的类来简化程序设计。</p>
+<p>简单地说，在我们申请 PageGuard 的同时，我们获取了对这个 page 在 bpm 中对应 frame 的读写权，即获取 frame 锁，在 PageGuard 对象超出作用域自然销毁的时候，我们释放 frame 锁，更新 bpm 信息。</p>
+<p>这么做的好处其实就是避免人为决定何时释放锁。通过系统对栈的自动管理，我们让资源管理的实际行为和我们的设计预期相符：需要用的时候是锁住的，不需要用的时候会立刻释放。</p>
+<h3 id="优化"><a href="#优化" class="headerlink" title="优化"></a>优化</h3><ul>
+<li>并发控制优化 对并发的优化实则就在于尽可能少锁住树的节点。在 naive 的实现中，我们每次操作都锁住从根节点到对应叶节点的一串节点，再到达叶节点后再从下往上解锁（即  crabbing）。一个容易想到的优化就是，当我们发现当前节点未来不会发生改变（分裂或合并），我们直接释放掉到当前节点为止的所有锁。我在查询中实现了这个优化，但增和删都未实现，最后的 qps 差距也是非常的大。</li>
+<li>并发控制优化其二：乐观锁 实际上绝大部分增删操作不会引起分裂或合并，因此我们在一开始只上读锁，如果最后访问到叶子节点时发现其需要进行分裂合并，我们再从根节点开始重新上一遍写锁。</li>
+<li>节点内部查询 由于B+树所有节点内部键均有序，我们可以使用二分查找。但这部分在数据库中整体时间消耗占比实际上比较少。</li>
+<li>B+树的参数选择 对于越快的存储设备，节点大小应该越小，从而减少读写冗余的数据。对于点查找比范围查找更少的负载类型，节点大小应该更大，这样读写叶子节点的次数会更少。<br><img src="/../images/2025-05-10%201.png"></li>
+<li>调节合并操作的阈值。我们并不一定需要当节点一达到半满就合并，有的时候可以允许小于半满的节点存在。</li>
+<li>前缀压缩和去重 我们可以记录同一个叶子节点中键的共同前缀，或者直接将一个 key 对应多个 value 来压缩空间</li>
+<li>磁盘空间回收 其实就是在磁盘管理的时候改成存一下哪块地方的数据已经不要用了。在bustub 中 <code>page_id</code> 直接对应磁盘上的一个位置。如果要改的话应当在 <code>disk_manager</code> 中再加一个 <code>map</code> 对应一下 <code>page_id</code> 和实际位置，用一个小根堆维护下一个可用位置，对于不要省磁盘空间的情况其实影响不太大。</li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>第一次写完 debug 完这样一个规模比较大的项目，其实还有很多可以优化的东西没写，比如磁盘空间回收等等等。从项目文件里面学习到了一些挺有用的东西，第一次用打印 log 的方式debug。感谢 wjh 同学替我解决的问题，节约了好多时间。</p>
+<p>另：搬运代码到TicketSystem中的时候被要求换掉std库里的stl，然后想起来用自己写过的stl替换，发现 list 里面还有错，属于是鲁棒性测试了。</p>
 
     </div>
 
