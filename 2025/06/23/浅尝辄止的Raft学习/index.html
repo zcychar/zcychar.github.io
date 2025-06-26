@@ -19,18 +19,16 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"zcychar.top","root":"/","images":"/images","scheme":"Pisces","darkmode":false,"version":"8.23.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"copycode":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"},"path":"/search.json","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
 
-    <meta name="description" content="Go批养成之路">
+    <meta name="description" content="暑假期间来学习一下 Raft 并实现 MIT 6.824 的几个lab">
 <meta property="og:type" content="article">
 <meta property="og:title" content="(浅尝辄止的)Raft学习记录">
 <meta property="og:url" content="http://zcychar.top/2025/06/23/%E6%B5%85%E5%B0%9D%E8%BE%84%E6%AD%A2%E7%9A%84Raft%E5%AD%A6%E4%B9%A0/index.html">
 <meta property="og:site_name" content="Blog">
-<meta property="og:description" content="Go批养成之路">
+<meta property="og:description" content="暑假期间来学习一下 Raft 并实现 MIT 6.824 的几个lab">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2025-06-23T02:26:49.000Z">
-<meta property="article:modified_time" content="2025-06-23T08:26:37.443Z">
+<meta property="article:modified_time" content="2025-06-26T05:57:21.948Z">
 <meta property="article:author" content="Chengyu Zhang">
-<meta property="article:tag" content="Study">
-<meta property="article:tag" content="Go">
 <meta name="twitter:card" content="summary">
 
 
@@ -146,7 +144,7 @@
   
   <aside class="sidebar">
 
-    <div class="sidebar-inner sidebar-overview-active">
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
       <ul class="sidebar-nav">
         <li class="sidebar-nav-toc">
           Table of Contents
@@ -159,6 +157,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Raft-%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB"><span class="nav-number">1.</span> <span class="nav-text">Raft 论文阅读</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Leadership-election"><span class="nav-number">1.1.</span> <span class="nav-text">Leadership election</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cluster-membership-changes"><span class="nav-number">1.2.</span> <span class="nav-text">Cluster membership changes</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -182,7 +181,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-count">3</span>
         <span class="site-state-item-name">tags</span></a>
       </div>
   </nav>
@@ -245,9 +244,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">Posted on</span>
-      
 
-      <time title="Created: 2025-06-23 10:26:49 / Modified: 16:26:37" itemprop="dateCreated datePublished" datetime="2025-06-23T10:26:49+08:00">2025-06-23</time>
+      <time title="Created: 2025-06-23 10:26:49" itemprop="dateCreated datePublished" datetime="2025-06-23T10:26:49+08:00">2025-06-23</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2025-06-26 13:57:21" itemprop="dateModified" datetime="2025-06-26T13:57:21+08:00">2025-06-26</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -268,8 +273,45 @@
     
     
     
-    <div class="post-body" itemprop="articleBody"><p>Go批养成之路</p>
+    <div class="post-body" itemprop="articleBody"><p>暑假期间来学习一下 Raft 并实现 MIT 6.824 的几个lab</p>
+<span id="more"></span>
 
+<h1 id="Raft-论文阅读"><a href="#Raft-论文阅读" class="headerlink" title="Raft 论文阅读"></a>Raft 论文阅读</h1><p>raft 使用 term 作为逻辑时钟</p>
+<p>term 规则：</p>
+<ul>
+<li>每个服务器会存储一个 current term 时钟</li>
+</ul>
+<!---->
+
+<ul>
+<li>低 term 的服务器接收到高 term 服务器信息时更新自己的term</li>
+<li>leader 或 candidate 接收到更高 term 的信息时退化 为 follower</li>
+<li>更低 term 的信息会被直接忽略</li>
+</ul>
+<p>term 规则保证了 Leader 永远是集群中更新最快(term最大)的节点</p>
+<h2 id="Leadership-election"><a href="#Leadership-election" class="headerlink" title="Leadership election"></a>Leadership election</h2><p>Follower 行为：</p>
+<ul>
+<li>进行 election timeout</li>
+</ul>
+<!---->
+
+<ul>
+<li>接收 有效 append entry RPC  (包括heartbeat) 来重置 timeout</li>
+<li>当进行投票后，也应该重置 timeout</li>
+<li>当 election timeout 结束 转变为 Candidate</li>
+</ul>
+<p>Candidate 行为：</p>
+<ul>
+<li>给自己投票并 发送 RequestVote RPC 进行 timeout</li>
+<li>当得到超过集群规模半数的成员投票时，Candidate 竞选成功，转变为 Leader</li>
+<li>当得到别人的 heartbeat （说明已产生 Leader）时，直接退化为 Follower</li>
+<li>当 time out 发生 (即发生分票，无法产生 Leader) Leader 会增加自己的 term，开始新一轮选举</li>
+</ul>
+<p>Leader 行为：</p>
+<ul>
+<li>发送 heartbeat</li>
+</ul>
+<h2 id="Cluster-membership-changes"><a href="#Cluster-membership-changes" class="headerlink" title="Cluster membership changes"></a>Cluster membership changes</h2>
     </div>
 
     
@@ -277,10 +319,6 @@
     
 
     <footer class="post-footer">
-          <div class="post-tags">
-              <a href="/tags/Study/" rel="tag"># Study</a>
-              <a href="/tags/Go/" rel="tag"># Go</a>
-          </div>
 
         
 
