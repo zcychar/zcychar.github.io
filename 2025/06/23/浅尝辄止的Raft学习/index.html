@@ -19,15 +19,15 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"zcychar.top","root":"/","images":"/images","scheme":"Pisces","darkmode":false,"version":"8.23.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"copycode":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"},"path":"/search.json","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
 
-    <meta name="description" content="暑假期间来学习一下 Raft 并实现 MIT 6.824 的几个lab">
+    <meta name="description" content="暑假期间来学习一下 Raft 并实现 MIT 6.824 的几个lab Raft 论文阅读raft 使用 term 作为逻辑时钟 term 规则：  每个服务器会存储一个 current term 时钟     低 term 的服务器接收到高 term 服务器信息时更新自己的term leader 或 candidate 接收到更高 term 的信息时退化 为 follower 更低 term 的">
 <meta property="og:type" content="article">
 <meta property="og:title" content="(浅尝辄止的)Raft学习记录">
 <meta property="og:url" content="http://zcychar.top/2025/06/23/%E6%B5%85%E5%B0%9D%E8%BE%84%E6%AD%A2%E7%9A%84Raft%E5%AD%A6%E4%B9%A0/index.html">
 <meta property="og:site_name" content="Blog">
-<meta property="og:description" content="暑假期间来学习一下 Raft 并实现 MIT 6.824 的几个lab">
+<meta property="og:description" content="暑假期间来学习一下 Raft 并实现 MIT 6.824 的几个lab Raft 论文阅读raft 使用 term 作为逻辑时钟 term 规则：  每个服务器会存储一个 current term 时钟     低 term 的服务器接收到高 term 服务器信息时更新自己的term leader 或 candidate 接收到更高 term 的信息时退化 为 follower 更低 term 的">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2025-06-23T02:26:49.000Z">
-<meta property="article:modified_time" content="2025-06-26T05:57:21.948Z">
+<meta property="article:modified_time" content="2025-06-30T02:53:13.324Z">
 <meta property="article:author" content="Chengyu Zhang">
 <meta name="twitter:card" content="summary">
 
@@ -157,7 +157,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Raft-%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB"><span class="nav-number">1.</span> <span class="nav-text">Raft 论文阅读</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Leadership-election"><span class="nav-number">1.1.</span> <span class="nav-text">Leadership election</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cluster-membership-changes"><span class="nav-number">1.2.</span> <span class="nav-text">Cluster membership changes</span></a></li></ol></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Raft-%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB"><span class="nav-number">1.</span> <span class="nav-text">Raft 论文阅读</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Leadership-election"><span class="nav-number">1.1.</span> <span class="nav-text">Leadership election</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Log-Replication"><span class="nav-number">1.2.</span> <span class="nav-text">Log Replication</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Inconsistency-%E5%A4%84%E7%90%86-%EF%BC%9A"><span class="nav-number">1.2.1.</span> <span class="nav-text">Inconsistency 处理 ：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cluster-membership-changes"><span class="nav-number">1.3.</span> <span class="nav-text">Cluster membership changes</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -252,7 +252,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2025-06-26 13:57:21" itemprop="dateModified" datetime="2025-06-26T13:57:21+08:00">2025-06-26</time>
+      <time title="Modified: 2025-06-30 10:53:13" itemprop="dateModified" datetime="2025-06-30T10:53:13+08:00">2025-06-30</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -274,8 +274,6 @@
     
     
     <div class="post-body" itemprop="articleBody"><p>暑假期间来学习一下 Raft 并实现 MIT 6.824 的几个lab</p>
-<span id="more"></span>
-
 <h1 id="Raft-论文阅读"><a href="#Raft-论文阅读" class="headerlink" title="Raft 论文阅读"></a>Raft 论文阅读</h1><p>raft 使用 term 作为逻辑时钟</p>
 <p>term 规则：</p>
 <ul>
@@ -311,6 +309,16 @@
 <ul>
 <li>发送 heartbeat</li>
 </ul>
+<h2 id="Log-Replication"><a href="#Log-Replication" class="headerlink" title="Log Replication"></a>Log Replication</h2><p>Leader 使用 AppendEntries RPC 发送 log</p>
+<p>当一个 log 被超过半数成员接收时，称为 committed 此时 Leader 可以执行这个 log</p>
+<p>当一个 log entry 被 committed 它之前的所有 entry 也自动被committed</p>
+<p>对于 log entries 有如下两条性质，可以保证实现上述的  commit rule</p>
+<ul>
+<li>If two entries in different logs have the same index and term, then they store the same command.</li>
+<li>If two entries in different logs have the same index and term, then the logs are identical in all preceding entries.</li>
+</ul>
+<h3 id="Inconsistency-处理-："><a href="#Inconsistency-处理-：" class="headerlink" title="Inconsistency 处理 ："></a>Inconsistency 处理 ：</h3><p>AppendEntries RPC 会进行consistency check 当 Leader 和 Follower 的 nextIndex 之前的 entry 无法匹配时，会不断递减 nextIndex 直到匹配 （最低为0），随后再将 Leader 的 log entry 复制给 Follower</p>
+<p>Leader Append-Only 性质：Leader永远只会增加，而不会修改，删除自己的 log entry</p>
 <h2 id="Cluster-membership-changes"><a href="#Cluster-membership-changes" class="headerlink" title="Cluster membership changes"></a>Cluster membership changes</h2>
     </div>
 
