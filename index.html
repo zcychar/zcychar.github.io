@@ -331,7 +331,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2025-07-03 10:43:48" itemprop="dateModified" datetime="2025-07-03T10:43:48+08:00">2025-07-03</time>
+      <time title="Modified: 2025-07-03 11:15:42" itemprop="dateModified" datetime="2025-07-03T11:15:42+08:00">2025-07-03</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -400,7 +400,10 @@
 </ul>
 <h3 id="Inconsistency-处理-："><a href="#Inconsistency-处理-：" class="headerlink" title="Inconsistency 处理 ："></a>Inconsistency 处理 ：</h3><p>AppendEntries RPC 会进行consistency check 当 Leader 和 Follower 的 nextIndex 之前的 entry 无法匹配时，会不断递减 nextIndex 直到匹配 （最低为0），随后再将 Leader 的 log entry 复制给 Follower</p>
 <p>Leader Append-Only 性质：Leader永远只会增加，而不会修改，删除自己的 log entry</p>
+<p><img src="/attachments/GR866QYD.png" alt="\&lt;img alt&#x3D;&quot;&quot; data-attachment-key&#x3D;&quot;GR866QYD&quot; width&#x3D;&quot;1066&quot; height&#x3D;&quot;502&quot; src&#x3D;&quot;attachments&#x2F;GR866QYD.png&quot; ztype&#x3D;&quot;zimage&quot;&gt; | 1066"></p>
+<p>论文的 Figure8 直观地描述了一个重要的性质（及违反它的后果），即 Leader 只能 <strong>直接</strong> commit 自己当前 Term 的 log，而对于之前 Term 并未 commit 的 log，我们应当在当前 Term 的 log 被 commit 后，使用 commit rule 的第二条来自动 commit 它的所有前驱 log。否则会造成已经被commit 的 log 被覆盖（当leader允许 commit 非当前 Term 的 log 时，意味着 Follower 的最后 commit log 可能是非最新 Term， 此时由 log 覆盖的规则，只要有较新 Term 的 log 便可以覆盖它）在这里体现了 Term 机制是如何维护共识，即拥有较高 Term 的 Server （可认为是 Leader）永远拥有对较低 Term 的修改权力。  </p>
 <h2 id="Log-compaction"><a href="#Log-compaction" class="headerlink" title="Log compaction"></a>Log compaction</h2><p>Server 上存储的 Log 数量不可能无限增加，为了节约硬盘资源 (同时加快恢复速度)，我们必须有驱逐过时 Log 的机制。在 Raft 中，我们使用 Snapshot 快照。</p>
+<p><img src="/attachments/MNTZ6P93.png" alt="\&lt;img alt&#x3D;&quot;&quot; data-attachment-key&#x3D;&quot;MNTZ6P93&quot; width&#x3D;&quot;880&quot; height&#x3D;&quot;605&quot; src&#x3D;&quot;attachments&#x2F;MNTZ6P93.png&quot; ztype&#x3D;&quot;zimage&quot;&gt; | 880"></p>
 <p>在一个 Snapshot 中，server 只需要存储少量的 metadata ，如 最后一个被包含的 Log 的 Index 及 Term 信息， 即可保证 绝大部分情况下 Raft 算法正常的运作。当创建一个 Snapshot 后，Server 便可以将已被加入 Snapshot 的 Log 安全删除。</p>
 <p>但存在一个例外情况，当 Leader 向一个 Follower 发送的 AppendEnteries RPC 包含已经被写入 Snapshot 的 log ，此时 Leader 就只能转而向 Follower 发送 Snapshot。这种情况仅出现在 和 Leader 同步极其落后的 Follower 中，因为绝大部分情况 Leader Snapshot 一个 log 时，这个 log 已经被 Follower 所拥有了。在 发送 Snapshot 的 RPC handler 中，follower 需要根据 Snapshot 和自身 log 的更新情况来决定，若出现了自己未拥有的信息，则直接用 snapshot 代替当前所有信息，否则部分同步 snapshot</p>
 <p>对于 snapshot 的进一步思考：snapshot 过程中并不存在 “新” 的信息产生，而只是 server 重新整合自己的信息，因此它并不破坏共识机制，同时数据仍然只从 Leader 单向流向 Follower。因此它虽然和 Raft 的 strong leader 原则不符，但不破坏 Raft的性质。</p>
