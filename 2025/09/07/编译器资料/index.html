@@ -19,15 +19,15 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"zcychar.top","root":"/","images":"/images","scheme":"Pisces","darkmode":false,"version":"8.23.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"copycode":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"},"path":"/search.json","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
 
-    <meta name="description" content="Road to be the GuitarHero">
+    <meta name="description" content="记录编译器写了什么以及目前的思考">
 <meta property="og:type" content="article">
 <meta property="og:title" content="编译器资料">
 <meta property="og:url" content="http://zcychar.top/2025/09/07/%E7%BC%96%E8%AF%91%E5%99%A8%E8%B5%84%E6%96%99/index.html">
 <meta property="og:site_name" content="Blog">
-<meta property="og:description" content="Road to be the GuitarHero">
+<meta property="og:description" content="记录编译器写了什么以及目前的思考">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2025-09-07T01:41:10.000Z">
-<meta property="article:modified_time" content="2025-09-07T01:41:10.796Z">
+<meta property="article:modified_time" content="2026-03-15T15:54:45.562Z">
 <meta property="article:author" content="Chengyu Zhang">
 <meta name="twitter:card" content="summary">
 
@@ -144,7 +144,7 @@
   
   <aside class="sidebar">
 
-    <div class="sidebar-inner sidebar-overview-active">
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
       <ul class="sidebar-nav">
         <li class="sidebar-nav-toc">
           Table of Contents
@@ -157,6 +157,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">1.</span> <span class="nav-text">参考资料</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#asm"><span class="nav-number">2.</span> <span class="nav-text">asm</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#graph-coloring"><span class="nav-number">2.1.</span> <span class="nav-text">graph-coloring</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -246,6 +247,13 @@
 
       <time title="Created: 2025-09-07 09:41:10" itemprop="dateCreated datePublished" datetime="2025-09-07T09:41:10+08:00">2025-09-07</time>
     </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2026-03-15 23:54:45" itemprop="dateModified" datetime="2026-03-15T23:54:45+08:00">2026-03-15</time>
+    </span>
 
   
 </div>
@@ -256,7 +264,36 @@
     
     
     
-    <div class="post-body" itemprop="articleBody">
+    <div class="post-body" itemprop="articleBody"><p>记录编译器写了什么以及目前的思考</p>
+<span id="more"></span>
+
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li>Engineer a Compiler ：涵盖了写编译器过程中各种问题，但感觉更为适合带着问题去找答案</li>
+<li>现代编译原理 ：主要看了寄存器分配的章节，写的非常清楚，可以给到夯</li>
+<li>Mx编译器手册 ：作为索引不错，刚入手时从里面了解到“该做什么”</li>
+</ul>
+<h2 id="asm"><a href="#asm" class="headerlink" title="asm"></a>asm</h2><p>先将ir中的phi去除掉，去除的方式是改用move语句代替，这里并非汇编中的’mv’，因为一部分的move可以在后面的寄存器分配中得到优化。这里存在一些数据冲突的情况，可能需要插入额外的块来解决。phi具有一个性质，一个块中的赋值是并行的，因此需要特别处理交换数据的情况。</p>
+<h3 id="graph-coloring"><a href="#graph-coloring" class="headerlink" title="graph-coloring"></a>graph-coloring</h3><p>虚拟寄存器是无限的，但物理寄存器是有限的。为了提高效率，需要找到最合理的将物理寄存器分配给变量的方式。若运行的同一时刻两个变量同时需要被记录，则它们无法记录在同一物理寄存器中。由此性质可以建立冲突图，将每个变量抽象为节点，存在活跃冲突的节点间连边。寄存器分配问题被转换为了如何使用K种颜色为该图着色，使得任两个相邻节点颜色不同的图着色问题。判断染色是否成立为一NP难问题，我们实现启发式算法使得溢出尽可能少的点的情况下，染色成立。</p>
+<p>对于一条move中的两个变量，两者在一些情况下实际不存在冲突，如仅在phi的消除时出现。此时将其规划在一个物理寄存器中是合理的。在建图时我们为这些边做特殊的标记，在染色过程中可以将其合并。</p>
+<p>在染色前，图中会存在K个预着色的节点，它们间相互冲突。这些代表机器寄存器，它们的度数应当设为无限大，因为它们永远不会被溢出或简化。一个被使用的机器寄存器会存在活跃范围（如一个函数参数），因此也会和普通变量产生冲突。</p>
+<p>执行算法时，我们重复以下操作：</p>
+<ol>
+<li>找到所有度数小于K且不包含move边的节点，直接删除。这些节点一定可以合理染色</li>
+<li>寻找move边相连的节点，若能够合并则合并为一个点</li>
+<li>放弃某个move边，将其视为普通边</li>
+<li>将一个节点从图中删除，标记为溢出</li>
+</ol>
+<p>删除的节点被记录在栈中，当所有节点都被删除，再尝试对原图染色，将节点从删除的栈中弹出依次染色，若存在不可染色节点，将其实际溢出，在块中插入load和store，随后重复整个流程，直到染色可行。</p>
+<p>合并操作中，应当选择不会使图的性质变得更坏的判断标准，即我们不希望合并后的图从可着色变为不可着色。常用的标准有</p>
+<ul>
+<li>Geroge：对a的每一个邻居t，t的度数小于K或者t与b冲突。</li>
+<li>Brigg ：合并后产生的节点所拥有的度数不小于K的邻节点个数小于K。</li>
+</ul>
+<p>Brigg 实际表明，合并后的节点可在简化（步骤1）中被消除。而 George 表明 a 合并到 b 不会影响 b 的合并情况。当两个节点中存在一个是物理寄存器时，我们应该选用 George，因为显然 Brigg 期望合并后的点被简化掉。当然，我们实现时不妨让两个约束满足其一即可。</p>
+<p>在图染色过程中，被标记溢出的点并不意味必定溢出。重新染色时，可能存在某个度数&gt;K的节点相邻点中有颜色相同的，从而可以染色。这被称为“乐观”溢出，这也说明我们仅在寻找一个近似的解。</p>
+<p>删除高度数节点时，优先选择判据有很多种，如度数最高，活跃区间最长等，个人认为对效果的影响没有那么大，在实现中，选择优先删除度数最高的节点。</p>
+<p>听说存在一种在ssa上进行的寄存器分配。但ssa形式的代码必定需要被转换为其它格式，这会导致额外的寄存器需求，如果有时间可能会研究一下这个方案。但个人认为效果上不会比图染色明显优秀，但是是一种非常优雅的线性方案。</p>
+
     </div>
 
     
@@ -296,7 +333,7 @@
 
   <div class="copyright">
     &copy; 
-    <span itemprop="copyrightYear">2025</span>
+    <span itemprop="copyrightYear">2026</span>
     <span class="with-love">
       <i class="fa fa-heart"></i>
     </span>
